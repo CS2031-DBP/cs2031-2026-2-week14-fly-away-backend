@@ -4,15 +4,15 @@ API REST para un sistema de reserva de vuelos construido con Spring Boot, autent
 
 ## Tecnologías
 
-- Java 21 / Spring Boot 3.5
-- Spring Security 6 + JWT (Auth0 java-jwt)
+- Java 26 / Spring Boot 4.1
+- Spring Security 7 + JWT (Auth0 java-jwt)
 - Spring Data JPA / Base de datos H2 en memoria
 - Lombok, ModelMapper, Jakarta Validation
 - Maven
 
 ## Requisitos
 
-- **Java 21** — verificar con `java -version`
+- **Java 26** — verificar con `java -version`
 - **No se necesita base de datos externa** — el proyecto usa H2, una base de datos en memoria que corre dentro de la aplicación
 
 ## Iniciar el servidor
@@ -27,7 +27,29 @@ El servidor inicia en `http://localhost:8080`. Deberías ver una línea como:
 Started Week07SolutionApplication in 3.2 seconds
 ```
 
-> **Nota:** La base de datos H2 vive completamente en memoria. Cada vez que detengas y reinicies el servidor, todos los datos (usuarios, vuelos, reservas) se borran. Esto es esperado — usa `POST /users/register` y `POST /flights/create` nuevamente después de cada reinicio.
+> **Nota:** La base de datos H2 vive completamente en memoria. Cada vez que detengas y reinicies el servidor, todos los datos (usuarios, vuelos, reservas) se borran y se vuelven a cargar los datos de ejemplo (ver abajo). Las reservas y los usuarios/vuelos que hayas creado no se conservan.
+
+### Datos de ejemplo
+
+Al iniciar, la aplicación carga automáticamente (`DataInitializer`) estos datos para que puedas probar sin crear nada a mano:
+
+**Usuarios** (rol `USER`, contraseña `Password1` para todos):
+
+| ID | Email | Nombre |
+|----|-------|--------|
+| 1 | `ana.garcia@utec.edu.pe` | Ana Garcia |
+| 2 | `carlos.lopez@utec.edu.pe` | Carlos Lopez |
+| 3 | `maria.torres@utec.edu.pe` | Maria Torres |
+| 4 | `diego.ramirez@utec.edu.pe` | Diego Ramirez |
+| 5 | `lucia.flores@utec.edu.pe` | Lucia Flores |
+
+**Vuelos** — las fechas son relativas al momento en que inicia el servidor:
+
+| ID | Vuelo | Aerolínea | Salida | Para qué sirve |
+|----|-------|-----------|--------|----------------|
+| 1–15 | `LA101`, `LA202`, `AV303`, `AV404`, `CM505`, `CM606`, `AA707`, `AA808`, `IB909`, `SK110`, `JB211`, `DL312`, `UA413`, `AF514`, `KL615` | LATAM, Avianca, Copa, American, Iberia, Sky, JetBlue, Delta, United, Air France, KLM | Desde +2 días hasta +16 días (uno por día) | Reservas exitosas |
+| 16 | `LA100` | LATAM Airlines | Hace 2 días | Probar el error `Cannot book a past flight` |
+| 17 | `SK120` | Sky Airline | +2 días, se superpone con `LA101` | Reserva `LA101` primero y luego `SK120` para probar el error `Overlapping flight found` |
 
 ## Inspeccionar la base de datos (Consola H2)
 
@@ -41,7 +63,7 @@ Usa estos datos de conexión:
 
 | Campo | Valor |
 |-------|-------|
-| JDBC URL | `jdbc:h2:mem:testdb` |
+| JDBC URL | `jdbc:h2:mem:week07-solution` |
 | User Name | `sa` |
 | Password | *(dejar en blanco)* |
 
@@ -251,8 +273,8 @@ Retorna la lista de todos los vuelos.
     "id": 1,
     "airlineName": "LATAM",
     "flightNumber": "LA123",
-    "estDepartureTime": "2026-12-01T10:00:00.000+00:00",
-    "estArrivalTime": "2026-12-01T14:00:00.000+00:00",
+    "estDepartureTime": "2026-12-01T10:00:00.000Z",
+    "estArrivalTime": "2026-12-01T14:00:00.000Z",
     "availableSeats": 100
   }
 ]
@@ -299,8 +321,8 @@ GET /flights/search?airlineName=LATAM&estDepartureTimeFrom=2026-12-01T00:00:00Z
       "id": 1,
       "airlineName": "LATAM",
       "flightNumber": "LA123",
-      "estDepartureTime": "2026-12-01T10:00:00.000+00:00",
-      "estArrivalTime": "2026-12-01T14:00:00.000+00:00",
+      "estDepartureTime": "2026-12-01T10:00:00.000Z",
+      "estArrivalTime": "2026-12-01T14:00:00.000Z",
       "availableSeats": 100
     }
   ]
@@ -327,7 +349,7 @@ Reserva un vuelo para el usuario actualmente autenticado.
 
 **Errores:**
 - `400` — el vuelo ya despegó, se superpone con otra reserva del usuario, o no hay asientos disponibles
-- `401` — no autenticado
+- `403` — no autenticado (falta el token o es inválido)
 
 ---
 
@@ -341,11 +363,11 @@ Retorna los detalles de una reserva por su ID.
 ```json
 {
   "id": 1,
-  "bookingDate": "2026-06-22T14:30:00.000+00:00",
+  "bookingDate": "2026-06-22T14:30:00.000Z",
   "flightId": 1,
   "flightNumber": "LA123",
-  "estDepartureTime": "2026-12-01T10:00:00.000+00:00",
-  "estArrivalTime": "2026-12-01T14:00:00.000+00:00",
+  "estDepartureTime": "2026-12-01T10:00:00.000Z",
+  "estArrivalTime": "2026-12-01T14:00:00.000Z",
   "customerId": 1,
   "customerFirstName": "Alice",
   "customerLastName": "Smith"

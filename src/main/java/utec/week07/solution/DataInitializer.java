@@ -79,7 +79,10 @@ public class DataInitializer implements CommandLineRunner {
             new FlightSeed("Delta Air Lines",     "DL312", 312,  8,  220),
             new FlightSeed("United Airlines",     "UA413", 336,  7,  200),
             new FlightSeed("Air France",          "AF514", 360, 12,  280),
-            new FlightSeed("KLM Royal Dutch",     "KL615", 384, 13,  260)
+            new FlightSeed("KLM Royal Dutch",     "KL615", 384, 13,  260),
+            // Casos para probar errores de reserva desde el frontend:
+            new FlightSeed("LATAM Airlines",      "LA100", -48,  5,  180), // vuelo pasado
+            new FlightSeed("Sky Airline",         "SK120", 49,   3,  140)  // se superpone con LA101
         );
 
         for (var f : flights) {

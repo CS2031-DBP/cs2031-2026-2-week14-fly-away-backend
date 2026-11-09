@@ -95,7 +95,7 @@ Construye una SPA con las siguientes funcionalidades. Las marcadas como **must h
 
 | Capa | Elección |
 |------|----------|
-| Framework | React 18 |
+| Framework | React 19 |
 | Lenguaje | TypeScript |
 | Build tool | Vite |
 | Cliente HTTP | Axios (recomendado) o `fetch` |
@@ -139,7 +139,7 @@ api.interceptors.request.use(config => {
 export default api;
 ```
 
-> **CORS:** El backend no restringe CORS en su configuración actual, por lo que las solicitudes desde `localhost:5173` (puerto por defecto de Vite) funcionarán sin problemas.
+> **CORS:** El backend tiene CORS habilitado para cualquier origen `http://localhost:*` y `http://127.0.0.1:*`, por lo que las solicitudes desde `localhost:5173` (puerto por defecto de Vite) funcionarán sin problemas, incluyendo las que envían el header `Authorization`.
 
 ---
 
@@ -161,5 +161,6 @@ Toda la documentación de endpoints — rutas, cuerpos de solicitud, estructura 
 
 - Guarda el JWT en `localStorage` por simplicidad
 - Usa inputs `datetime-local` y convierte a ISO-8601 para los filtros de fecha (`2026-12-01T00:00:00Z`)
-- El backend retorna `ProblemDetail` en errores — lee `error.response.data.detail` para el mensaje
+- El backend retorna `ProblemDetail` en errores — lee `error.response.data.detail` para el mensaje. Excepción: los errores de validación de campos (ej. contraseña débil en el registro) llegan como texto plano en `error.response.data`
+- Al iniciar, el backend carga usuarios y vuelos de ejemplo (contraseña `Password1`), incluyendo un vuelo pasado y uno con horario superpuesto para probar los errores de reserva — ver la sección *Datos de ejemplo* en el [README.md](./README.md)
 - Las horas de los vuelos usan ISO-8601 con timezone — `new Date(str).toLocaleString()` las muestra legibles
