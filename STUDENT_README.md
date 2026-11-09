@@ -91,6 +91,30 @@ Construye una SPA con las siguientes funcionalidades. Las marcadas como **must h
 
 ---
 
+## Antes de empezar
+
+Necesitas instalado:
+
+| Herramienta | Versión | Verificar con |
+|-------------|---------|---------------|
+| JDK | **26** (el backend no compila con Java 21 o anterior) | `java -version` |
+| Node.js | 20.19+ o 22.12+ (requerido por Vite) | `node -v` |
+| Git | cualquiera | `git --version` |
+
+> Si no tienes JDK 26: `sdk install java 26-open` (SDKMAN) o descárgalo desde [adoptium.net](https://adoptium.net). En IntelliJ, selecciona el JDK 26 en *File → Project Structure → SDK*.
+
+Clona el backend y levántalo:
+
+```bash
+git clone https://github.com/CS2031-DBP/cs2031-2026-2-week14-fly-away-backend.git
+cd cs2031-2026-2-week14-fly-away-backend
+./mvnw spring-boot:run
+```
+
+Tu frontend va en **otra carpeta**, fuera de este repositorio. Durante el desarrollo tendrás dos terminales abiertas: una con el backend (`localhost:8080`) y otra con el frontend (`npm run dev`, `localhost:5173`).
+
+---
+
 ## Stack tecnológico
 
 | Capa | Elección |
@@ -143,6 +167,134 @@ export default api;
 
 ---
 
+## Cómo usar los endpoints paso a paso
+
+Todos los ejemplos usan el `api` de `src/api.ts` (arriba). Para probar sin registrarte puedes iniciar sesión con `ana.garcia@utec.edu.pe` / `Password1` (ver *Datos de ejemplo* en el [README.md](./README.md)).
+
+Todos los errores `400` llegan como `ProblemDetail`; el mensaje para mostrar al usuario está en `err.response.data.detail`:
+
+```ts
+import axios from 'axios';
+
+function errorMessage(err: unknown): string {
+  if (axios.isAxiosError(err)) {
+    return err.response?.data?.detail ?? 'Error de conexión con el servidor';
+  }
+  return 'Error inesperado';
+}
+```
+
+### 1. Registro — `POST /users/register` (público)
+
+```ts
+await api.post('/users/register', { email, firstName, lastName, password });
+// 201 → { id: 6 }  → muestra un mensaje de éxito y navega a /login
+```
+
+- Reglas del backend: contraseña de **8+ caracteres con al menos una mayúscula y un dígito**; nombre y apellido deben **empezar con mayúscula**.
+- Errores (`400`, en `detail`): `password: must be at least 8 characters`, `password: must contain at least one uppercase letter and one digit`, `firstName: must start with an uppercase letter`, `email: must be a valid email`, `Username already exists` (email en uso).
+- Valida los campos vacíos **antes** de enviar: el backend acepta un email vacío.
+
+### 2. Login — `POST /auth/login` (público) + `GET /users/current` (protegido)
+
+```ts
+const { data } = await api.post('/auth/login', { email, password });
+localStorage.setItem('token', data.token); // la clave DEBE ser 'token': es la que lee el interceptor de api.ts
+
+const me = (await api.get('/users/current')).data;
+// { id, username, email, firstName, lastName, role }
+// muestra `${me.firstName} ${me.lastName}` y navega a la búsqueda
+```
+
+- Credenciales incorrectas → `400` con `detail: "Username does not exist"` (el mismo mensaje si el email no existe o si la contraseña es incorrecta).
+
+### 3. Búsqueda de vuelos — `GET /flights/search` (público)
+
+```ts
+// `from` y `to` son los valores de inputs <input type="datetime-local"> (pueden estar vacíos)
+const { data } = await api.get('/flights/search', {
+  params: {
+    flightNumber: flightNumber || undefined,
+    airlineName: airlineName || undefined,
+    estDepartureTimeFrom: from ? new Date(from).toISOString() : undefined,
+    estDepartureTimeTo: to ? new Date(to).toISOString() : undefined,
+  },
+});
+const flights = data.items; // ← la lista viene dentro de "items", no es un arreglo directo
+```
+
+- Cada vuelo trae: `id`, `flightNumber`, `airlineName`, `estDepartureTime`, `estArrivalTime`, `availableSeats`.
+- Todos los filtros son opcionales y se combinan (AND). La búsqueda es parcial y no distingue mayúsculas (`latam` encuentra `LATAM Airlines`).
+- Sin resultados → `{ "items": [] }`: muestra un mensaje amigable.
+- **Fechas:** convierte siempre con `toISOString()`. Si envías el valor crudo del input (`2026-11-10T05:00`) el backend responde `500`.
+
+### 4. Reservar un vuelo — `POST /flights/book` (protegido)
+
+```ts
+const { data } = await api.post('/flights/book', { flightId: flight.id });
+// 200 (no 201) → { id: 1 }  ← este es el ID de la reserva: muéstralo en el mensaje de éxito
+
+// Nice to have: detalle de la reserva
+const booking = (await api.get(`/flights/book/${data.id}`)).data;
+// { id, bookingDate, flightId, flightNumber, airlineName, estDepartureTime, estArrivalTime,
+//   customerId, customerFirstName, customerLastName }
+```
+
+- Errores (`400`, en `detail`):
+  - `Cannot book a past flight` → pruébalo con el vuelo **16** (`LA100`).
+  - `Overlapping flight found` → reserva el vuelo **1** (`LA101`) y luego el **17** (`SK120`).
+- Reservar el mismo vuelo dos veces **no** es un error para el backend.
+- Sin token → `403` con cuerpo vacío. Muestra el botón "Reservar" solo si hay token.
+
+### 5. Mis reservas — `GET /flights/book/{id}` (protegido)
+
+No existe un endpoint que liste las reservas del usuario: guarda los IDs en `localStorage` al reservar, **separados por usuario** (el backend devuelve cualquier reserva a cualquier usuario autenticado).
+
+```ts
+const key = `bookings:${me.email}`;
+
+// Al reservar (paso 4):
+const ids: number[] = JSON.parse(localStorage.getItem(key) ?? '[]');
+localStorage.setItem(key, JSON.stringify([...ids, data.id]));
+
+// En la página "Mis reservas":
+const saved: number[] = JSON.parse(localStorage.getItem(key) ?? '[]');
+const results = await Promise.allSettled(saved.map(id => api.get(`/flights/book/${id}`)));
+const bookings = results
+  .filter(r => r.status === 'fulfilled')
+  .map(r => (r as PromiseFulfilledResult<any>).value.data);
+// muestra: flightNumber, airlineName, estDepartureTime
+```
+
+- `Promise.allSettled` ignora los IDs que ya no existen: si reinicias el backend, las reservas se borran pero los IDs siguen en `localStorage`.
+
+### 6. Cerrar sesión y navegación (sin endpoint)
+
+```ts
+// Logout
+localStorage.removeItem('token');
+navigate('/login');
+
+// Rutas protegidas: si no hay token, redirige a /login
+if (!localStorage.getItem('token')) navigate('/login');
+
+// Token inválido: ante un 403 de cualquier endpoint protegido, limpia el token y vuelve al login
+api.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.response?.status === 403) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  },
+);
+```
+
+- Los endpoints protegidos responden `403` (no `401`) sin token o con un token inválido. El token no expira, pero si reinicias el backend los usuarios que registraste se borran y su token deja de servir.
+
+---
+
 ## Referencia de la API del backend
 
 Toda la documentación de endpoints — rutas, cuerpos de solicitud, estructura de respuestas, requisitos de autenticación y reglas de negocio — está en **[README.md](./README.md)**.
@@ -161,8 +313,5 @@ Toda la documentación de endpoints — rutas, cuerpos de solicitud, estructura 
 
 - Guarda el JWT en `localStorage` por simplicidad
 - Usa inputs `datetime-local` y convierte a ISO-8601 para los filtros de fecha (`2026-12-01T00:00:00Z`)
-- El backend retorna `ProblemDetail` en errores — lee `error.response.data.detail` para el mensaje (ej. `password: must be at least 8 characters`)
-- Sin token, o con un token inválido, los endpoints protegidos responden `403` (no `401`). El token no expira, pero si reinicias el backend los usuarios que registraste se borran y su token deja de servir: ante un `403`, limpia el token y redirige al login
-- `GET /flights/book/{id}` devuelve cualquier reserva a cualquier usuario autenticado, así que guarda los IDs de "Mis reservas" en `localStorage` separados por usuario (ej. con la clave `bookings:<email>`) para no mostrar reservas de otra sesión
 - Al iniciar, el backend carga usuarios y vuelos de ejemplo (contraseña `Password1`), incluyendo un vuelo pasado y uno con horario superpuesto para probar los errores de reserva — ver la sección *Datos de ejemplo* en el [README.md](./README.md)
 - Las horas de los vuelos usan ISO-8601 con timezone — `new Date(str).toLocaleString()` las muestra legibles
