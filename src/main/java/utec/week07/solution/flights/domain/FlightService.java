@@ -26,6 +26,7 @@ import utec.week07.solution.users.infrastructure.UserRepository;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 public class FlightService implements ApplicationEventPublisherAware {
@@ -78,11 +79,11 @@ public class FlightService implements ApplicationEventPublisherAware {
         return this.flightRepository.findAll().stream().filter(f -> {
             var found = true;
             if (StringUtils.hasText(flightNumber)) {
-                found &= f.getFlightNumber().contains(flightNumber);
+                found &= f.getFlightNumber().toLowerCase(Locale.ROOT).contains(flightNumber.toLowerCase(Locale.ROOT));
             }
 
             if (StringUtils.hasText(airlineName)) {
-                found &= f.getAirlineName().contains(airlineName);
+                found &= f.getAirlineName().toLowerCase(Locale.ROOT).contains(airlineName.toLowerCase(Locale.ROOT));
             }
 
             if (estDepartureTimeFrom != null) {

@@ -161,6 +161,8 @@ Toda la documentación de endpoints — rutas, cuerpos de solicitud, estructura 
 
 - Guarda el JWT en `localStorage` por simplicidad
 - Usa inputs `datetime-local` y convierte a ISO-8601 para los filtros de fecha (`2026-12-01T00:00:00Z`)
-- El backend retorna `ProblemDetail` en errores — lee `error.response.data.detail` para el mensaje. Excepción: los errores de validación de campos (ej. contraseña débil en el registro) llegan como texto plano en `error.response.data`
+- El backend retorna `ProblemDetail` en errores — lee `error.response.data.detail` para el mensaje (ej. `password: must be at least 8 characters`)
+- Sin token, o con un token inválido, los endpoints protegidos responden `403` (no `401`). El token no expira, pero si reinicias el backend los usuarios que registraste se borran y su token deja de servir: ante un `403`, limpia el token y redirige al login
+- `GET /flights/book/{id}` devuelve cualquier reserva a cualquier usuario autenticado, así que guarda los IDs de "Mis reservas" en `localStorage` separados por usuario (ej. con la clave `bookings:<email>`) para no mostrar reservas de otra sesión
 - Al iniciar, el backend carga usuarios y vuelos de ejemplo (contraseña `Password1`), incluyendo un vuelo pasado y uno con horario superpuesto para probar los errores de reserva — ver la sección *Datos de ejemplo* en el [README.md](./README.md)
 - Las horas de los vuelos usan ISO-8601 con timezone — `new Date(str).toLocaleString()` las muestra legibles

@@ -26,7 +26,7 @@ public class UserService {
     public User newUser(UserRegisterDTO dto) throws Exception {
         String pwd = dto.getPassword();
         if (!Pattern.matches(".*[A-Z].*", pwd) || !Pattern.matches(".*[0-9].*", pwd)) {
-            throw new ValidationException("Password has no alphanumeric characters");
+            throw new ValidationException("password: must contain at least one uppercase letter and one digit");
         }
 
         var user = modelMapper.map(dto, User.class);

@@ -80,6 +80,7 @@ public class FlightController {
         dto.setBookingDate(booking.getBookingDate());
         dto.setFlightId(booking.getFlight().getId());
         dto.setFlightNumber(booking.getFlight().getFlightNumber());
+        dto.setAirlineName(booking.getFlight().getAirlineName());
         dto.setEstDepartureTime(booking.getFlight().getEstDepartureTime());
         dto.setEstArrivalTime(booking.getFlight().getEstArrivalTime());
         dto.setCustomerId(booking.getCustomer().getId());

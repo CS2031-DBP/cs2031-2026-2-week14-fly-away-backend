@@ -143,6 +143,25 @@ No requiere autenticación. Crea un nuevo usuario con rol `USER`.
 **Errores:**
 - `400` — fallo de validación (contraseña débil, formato de nombre incorrecto, email ya registrado)
 
+Todos los errores `400` llegan como `ProblemDetail`; el mensaje está en `detail` (si fallan varios campos, se separan con `;`):
+```json
+{
+  "title": "Bad Request",
+  "status": 400,
+  "detail": "password: must be at least 8 characters; firstName: must start with an uppercase letter",
+  "instance": "/users/register"
+}
+```
+
+| Caso | `detail` |
+|------|----------|
+| Contraseña con menos de 8 caracteres | `password: must be at least 8 characters` |
+| Contraseña sin mayúscula o sin dígito | `password: must contain at least one uppercase letter and one digit` |
+| Nombre/apellido en minúscula | `firstName: must start with an uppercase letter` |
+| Campo faltante | `firstName: is required` |
+| Email inválido | `email: must be a valid email` |
+| Email ya registrado | `Username already exists` |
+
 ---
 
 #### `GET /users/current`
@@ -303,8 +322,8 @@ Todos los parámetros son opcionales y se pueden combinar.
 
 | Parámetro | Tipo | Descripción |
 |-----------|------|-------------|
-| `flightNumber` | string | Búsqueda parcial en el número de vuelo |
-| `airlineName` | string | Búsqueda parcial en el nombre de la aerolínea |
+| `flightNumber` | string | Búsqueda parcial en el número de vuelo (no distingue mayúsculas) |
+| `airlineName` | string | Búsqueda parcial en el nombre de la aerolínea (no distingue mayúsculas) |
 | `estDepartureTimeFrom` | ISO-8601 | Límite inferior de la hora de salida (ej. `2026-12-01T00:00:00Z`) |
 | `estDepartureTimeTo` | ISO-8601 | Límite superior de la hora de salida |
 
@@ -366,6 +385,7 @@ Retorna los detalles de una reserva por su ID.
   "bookingDate": "2026-06-22T14:30:00.000Z",
   "flightId": 1,
   "flightNumber": "LA123",
+  "airlineName": "LATAM",
   "estDepartureTime": "2026-12-01T10:00:00.000Z",
   "estArrivalTime": "2026-12-01T14:00:00.000Z",
   "customerId": 1,

@@ -11,12 +11,19 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
 import utec.week07.solution.common.ValidationException;
 
+import java.util.stream.Collectors;
+
 @RestControllerAdvice
 public class RestControllerAdviceHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<?> handleValidationException(MethodArgumentNotValidException ex) {
-        return ResponseEntity.badRequest().body("Error en la validación: " + ex.getMessage());
+    public ProblemDetail handleValidationException(MethodArgumentNotValidException ex) {
+        // ej. "password: must be at least 8 characters; firstName: must start with an uppercase letter"
+        var detail = ex.getBindingResult().getFieldErrors().stream()
+                       .map(e -> e.getField() + ": " + e.getDefaultMessage())
+                       .distinct()
+                       .collect(Collectors.joining("; "));
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
     }
 
     @ExceptionHandler(AccessDeniedException.class)

@@ -12,6 +12,7 @@ public class GetBookingDTO {
     private Date bookingDate;
     private Long flightId;
     private String flightNumber;
+    private String airlineName;
     private Long customerId;
     private String customerFirstName;
     private String customerLastName;
